@@ -2,6 +2,9 @@
 //
 
 #include "stdafx.h"
+#include "SerialEndpoint.h"
+
+#include <memory>
 
 int main(int argc, char *argv[])
 {
@@ -13,27 +16,35 @@ int main(int argc, char *argv[])
 	char* portname = argv[1];
 	int volume = ::atoi(argv[2]);
 
-	asio::io_service service;
-	asio::serial_port serialport(service);
-
-	serialport.open(portname);
-
-	serialport.set_option(asio::serial_port::baud_rate(115200));
-	serialport.set_option(asio::serial_port::character_size(8));
-	serialport.set_option(asio::serial_port::parity(asio::serial_port::parity::none));
-	serialport.set_option(asio::serial_port::stop_bits(asio::serial_port::stop_bits::one));
-	serialport.set_option(asio::serial_port::flow_control(asio::serial_port::flow_control::none));
-
-	std::string command{ "HELLO;" };
-	asio::write(serialport, asio::buffer(command.c_str(), command.length()));
-
-	char response;
-	while (asio::read(serialport, asio::buffer(&response, 1)))
+	const std::string volumePrefix = "Z1VOL";
+	std::string preferredVolumeCommand;
 	{
-		std::cout << response;
-		if (response == ';')
+		std::stringstream ss;
+		ss << volumePrefix << volume << ";";
+		preferredVolumeCommand = ss.str();
+	}
+
+	Anthem::SerialEndpoint avm(portname);
+
+	auto handler = std::make_shared<Anthem::SerialEndpoint::Sink>([&](Anthem::Command command) 
+	{ 
+		std::cout << command << std::endl; 
+		if (command.find(volumePrefix) == 0 && command != preferredVolumeCommand)
 		{
-			std::cout << std::endl;
+			avm.Send(preferredVolumeCommand);
+		}
+	});
+
+	avm.OnCommand(handler);
+	avm.Connect();
+	
+	std::string s;
+	while (s != "q")
+	{
+		std::cin >> s;
+		if (s != "q")
+		{
+			avm.Send(s);
 		}
 	}
 }

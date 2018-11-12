@@ -7,11 +7,11 @@
 
 #include "targetver.h"
 
+// for asio :(
+#define _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING 
+
 #include <stdio.h>
 #include <tchar.h>
 #include "iostream"
-
-#define ASIO_STANDALONE
-#include "asio\include\asio.hpp"
 
 // TODO: reference additional headers your program requires here
